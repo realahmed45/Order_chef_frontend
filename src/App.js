@@ -5,46 +5,57 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import "./App.css";
-import Navbar from "./components/Navbar";
-import Home from "./components/Home";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import Onboarding from "./components/Onboarding";
-import Dashboard from "./components/Dashboard";
-import Pricing from "./components/Pricing";
+
+// Components
+import Navbar from "./components/common/Navbar";
+import LoadingSpinner from "./components/common/LoadingSpinner";
+
+// Pages
+import Home from "./components/public/Home";
+import Login from "./components/auth/Login";
+import Register from "./components/auth/Register";
+import Onboarding from "./components/onboarding/Onboarding";
+import Dashboard from "./components/dashoard/Dashboard";
+import Pricing from "./components/public/Pricing";
+import KitchenDisplay from "./components/kitchen/KitchenDisplay";
+
+// Context Providers
+import { SocketProvider } from "./context/SocketContext";
+
+// API
+import { authApi } from "./api";
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      fetch("http://localhost:5000/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user) {
-            setUser(data.user);
-          }
-          setLoading(false);
-        })
-        .catch(() => {
-          localStorage.removeItem("token");
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
+    checkAuthStatus();
   }, []);
 
+  const checkAuthStatus = async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const data = await authApi.getCurrentUser();
+        if (data.success) {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        localStorage.removeItem("token");
+      }
+    }
+    setLoading(false);
+  };
+
   const login = (userData) => {
-    setUser(userData.user);
-    localStorage.setItem("token", userData.token);
+    setUser(userData.user || userData);
+    if (userData.token) {
+      localStorage.setItem("token", userData.token);
+    }
   };
 
   const logout = () => {
@@ -58,54 +69,112 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="large" />
       </div>
     );
   }
 
   return (
-    <Router>
-      <div className="App">
-        <Navbar user={user} onLogout={logout} />
-        <Routes>
-          <Route path="/" element={<Home user={user} />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route
-            path="/login"
-            element={
-              !user ? <Login onLogin={login} /> : <Navigate to="/onboarding" />
-            }
+    <SocketProvider user={user}>
+      <Router>
+        <div className="App min-h-screen bg-gray-50">
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: "#363636",
+                color: "#fff",
+              },
+              success: {
+                style: {
+                  background: "#059669",
+                },
+              },
+              error: {
+                style: {
+                  background: "#DC2626",
+                },
+              },
+            }}
           />
-          <Route
-            path="/register"
-            element={
-              !user ? (
-                <Register onLogin={login} />
-              ) : (
-                <Navigate to="/onboarding" />
-              )
-            }
-          />
-          <Route
-            path="/onboarding"
-            element={
-              user ? (
-                <Onboarding user={user} onUpdateUser={updateUser} />
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              user ? <Dashboard user={user} /> : <Navigate to="/login" />
-            }
-          />
-        </Routes>
-      </div>
-    </Router>
+
+          <Navbar user={user} onLogout={logout} />
+
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Home user={user} />} />
+            <Route path="/pricing" element={<Pricing />} />
+
+            {/* Auth Routes */}
+            <Route
+              path="/login"
+              element={
+                !user ? (
+                  <Login onLogin={login} />
+                ) : user.onboarding?.completed ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/onboarding" replace />
+                )
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                !user ? (
+                  <Register onLogin={login} />
+                ) : user.onboarding?.completed ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/onboarding" replace />
+                )
+              }
+            />
+
+            {/* Protected Routes */}
+            <Route
+              path="/onboarding"
+              element={
+                user ? (
+                  <Onboarding user={user} onUpdateUser={updateUser} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/dashboard/*"
+              element={
+                user ? (
+                  user.onboarding?.completed ? (
+                    <Dashboard user={user} />
+                  ) : (
+                    <Navigate to="/onboarding" replace />
+                  )
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/kitchen"
+              element={
+                user ? (
+                  <KitchenDisplay user={user} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+
+            {/* Fallback Route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </Router>
+    </SocketProvider>
   );
 }
 
