@@ -3,123 +3,179 @@ import { Link } from "react-router-dom";
 import { authApi } from "../../api";
 import LoadingSpinner from "../common/LoadingSpinner";
 import toast from "react-hot-toast";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  EnvelopeIcon,
+  LockClosedIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    rememberMe: false,
   });
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+
+    switch (name) {
+      case "email":
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value) {
+          newErrors.email = "Email is required";
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = "Please enter a valid email address";
+        } else {
+          delete newErrors.email;
+        }
+        break;
+
+      case "password":
+        if (!value) {
+          newErrors.password = "Password is required";
+        } else if (value.length < 6) {
+          newErrors.password = "Password must be at least 6 characters";
+        } else {
+          delete newErrors.password;
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const fieldValue = type === "checkbox" ? checked : value;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: fieldValue,
     }));
-    // Clear error when user starts typing
-    if (error) setError("");
+
+    // Real-time validation for non-checkbox fields
+    if (type !== "checkbox") {
+      validateField(name, fieldValue);
+    }
+
+    // Clear global error when user starts typing
+    if (errors.submit) {
+      setErrors((prev) => ({ ...prev, submit: null }));
+    }
   };
 
   const validateForm = () => {
-    if (!formData.email) {
-      setError("Email is required");
-      return false;
-    }
-    if (!formData.password) {
-      setError("Password is required");
-      return false;
-    }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setError("Please enter a valid email address");
-      return false;
-    }
-    return true;
+    validateField("email", formData.email);
+    validateField("password", formData.password);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     setLoading(true);
-    setError("");
+    setErrors({});
 
     try {
-      const data = await authApi.login(formData);
+      const data = await authApi.login({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
 
       if (data.success) {
-        toast.success(`Welcome back, ${data.user.name}!`);
+        toast.success(`Welcome back, ${data.user.name}! 🎉`);
         onLogin(data);
       } else {
-        setError(data.message || "Login failed");
+        setErrors({ submit: data.message || "Login failed" });
+        toast.error(data.message || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);
-      setError(
+      const errorMessage =
         error.response?.data?.message ||
-          error.message ||
-          "Network error. Please try again."
-      );
+        error.message ||
+        "Network error. Please try again.";
+
+      setErrors({ submit: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const fillDemoAccount = () => {
+    setFormData({
+      email: "demo@orderchef.com",
+      password: "demo123",
+      rememberMe: false,
+    });
+    setErrors({});
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {/* Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-2xl text-white font-bold">🍽️</span>
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <span className="text-3xl text-white font-bold">🍽️</span>
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Welcome back to OrderChef
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
+          Sign in to your restaurant dashboard
+        </p>
+        <p className="mt-1 text-center text-sm text-gray-500">
           Don't have an account?{" "}
           <Link
             to="/register"
             className="font-medium text-orange-600 hover:text-orange-500 transition duration-200"
           >
-            Sign up for free
+            Start your free trial
           </Link>
         </p>
       </div>
 
+      {/* Form */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-gray-100">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
+            {errors.submit && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
                 <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {error}
+                  <XCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
+                  <span>{errors.submit}</span>
                 </div>
               </div>
             )}
 
+            {/* Email */}
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Email address
+                Email Address
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
+                <EnvelopeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   id="email"
                   name="email"
@@ -128,20 +184,34 @@ const Login = ({ onLogin }) => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 transition duration-200"
+                  className={`appearance-none block w-full pl-10 pr-3 py-3 border rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition duration-200 ${
+                    errors.email
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-300"
+                  }`}
                   placeholder="Enter your email"
                 />
+                {!errors.email &&
+                  formData.email &&
+                  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                    <CheckCircleIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-500" />
+                  )}
               </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
+            {/* Password */}
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Password
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
+                <LockClosedIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   id="password"
                   name="password"
@@ -150,7 +220,11 @@ const Login = ({ onLogin }) => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 transition duration-200"
+                  className={`appearance-none block w-full pl-10 pr-10 py-3 border rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition duration-200 ${
+                    errors.password
+                      ? "border-red-300 bg-red-50"
+                      : "border-gray-300"
+                  }`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -159,54 +233,30 @@ const Login = ({ onLogin }) => {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                      />
-                    </svg>
+                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                   ) : (
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
+                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                   )}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
+            {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
-                  id="remember-me"
-                  name="remember-me"
+                  id="rememberMe"
+                  name="rememberMe"
                   type="checkbox"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
                   className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                 />
                 <label
-                  htmlFor="remember-me"
+                  htmlFor="rememberMe"
                   className="ml-2 block text-sm text-gray-900"
                 >
                   Remember me
@@ -218,16 +268,17 @@ const Login = ({ onLogin }) => {
                   to="/forgot-password"
                   className="font-medium text-orange-600 hover:text-orange-500 transition duration-200"
                 >
-                  Forgot your password?
+                  Forgot password?
                 </Link>
               </div>
             </div>
 
+            {/* Submit Button */}
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
               >
                 {loading ? (
                   <div className="flex items-center">
@@ -235,54 +286,118 @@ const Login = ({ onLogin }) => {
                     <span className="ml-2">Signing in...</span>
                   </div>
                 ) : (
-                  "Sign in"
+                  "Sign In"
                 )}
               </button>
             </div>
           </form>
 
-          <div className="mt-6">
+          {/* Demo Account Section */}
+          <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white text-gray-500">
-                  Demo Account
+                  Try Demo Account
                 </span>
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-6">
               <button
-                onClick={() => {
-                  setFormData({
-                    email: "demo@orderchef.com",
-                    password: "demo123",
-                  });
-                }}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition duration-200"
+                type="button"
+                onClick={fillDemoAccount}
+                className="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition duration-200"
               >
+                <span className="mr-2">🎯</span>
                 Try Demo Account
               </button>
+
+              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+                  <div className="text-sm text-blue-700">
+                    <p className="font-medium mb-1">
+                      Demo Account Credentials:
+                    </p>
+                    <p>Email: demo@orderchef.com</p>
+                    <p>Password: demo123</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Notice */}
+          <div className="mt-8 bg-gray-50 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <LockClosedIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-gray-800">
+                  Secure Login
+                </h3>
+                <p className="mt-1 text-xs text-gray-600">
+                  Your login is protected with industry-standard encryption and
+                  security measures.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Footer Links */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500">
             By signing in, you agree to our{" "}
-            <Link to="/terms" className="text-orange-600 hover:text-orange-500">
+            <Link
+              to="/terms"
+              className="text-orange-600 hover:text-orange-500 font-medium"
+            >
               Terms of Service
             </Link>{" "}
             and{" "}
             <Link
               to="/privacy"
-              className="text-orange-600 hover:text-orange-500"
+              className="text-orange-600 hover:text-orange-500 font-medium"
             >
               Privacy Policy
             </Link>
           </p>
+        </div>
+
+        {/* Support */}
+        <div className="mt-6 text-center">
+          <div className="bg-white rounded-lg shadow border border-gray-100 p-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">
+              Need Help?
+            </h4>
+            <div className="flex justify-center space-x-4 text-xs">
+              <Link
+                to="/support"
+                className="text-orange-600 hover:text-orange-500 font-medium"
+              >
+                Contact Support
+              </Link>
+              <span className="text-gray-300">•</span>
+              <Link
+                to="/docs"
+                className="text-orange-600 hover:text-orange-500 font-medium"
+              >
+                Documentation
+              </Link>
+              <span className="text-gray-300">•</span>
+              <Link
+                to="/status"
+                className="text-orange-600 hover:text-orange-500 font-medium"
+              >
+                System Status
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
