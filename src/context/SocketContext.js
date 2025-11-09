@@ -5,7 +5,7 @@ import {
   playNotificationSound,
   showNotification,
   requestNotificationPermission,
-} from "../utils/helpers";
+} from "../components/utils/helpers";
 
 const SocketContext = createContext();
 

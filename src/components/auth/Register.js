@@ -161,14 +161,91 @@ const Register = ({ onLogin }) => {
     return true;
   };
 
-  const handleNextStep = () => {
-    if (validateStep(1)) {
-      setStep(2);
-    }
-  };
+  const handleNextStep = (e) => {
+    e?.preventDefault();
 
+    console.log("🔥 CONTINUE BUTTON CLICKED!");
+    console.log("📋 Current form data:", {
+      name: `"${formData.name}" (length: ${formData.name?.length})`,
+      email: `"${formData.email}" (length: ${formData.email?.length})`,
+      password: `"${formData.password}" (length: ${formData.password?.length})`,
+      confirmPassword: `"${formData.confirmPassword}" (length: ${formData.confirmPassword?.length})`,
+    });
+
+    // Validate step 1 synchronously with detailed logging
+    const stepErrors = {};
+
+    // Name validation
+    if (!formData.name || !formData.name.trim()) {
+      stepErrors.name = "Full name is required";
+      console.log("❌ Name validation failed: empty or whitespace");
+    } else if (formData.name.trim().length < 2) {
+      stepErrors.name = "Name must be at least 2 characters";
+      console.log("❌ Name validation failed: too short");
+    } else {
+      console.log("✅ Name validation passed");
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email) {
+      stepErrors.email = "Email is required";
+      console.log("❌ Email validation failed: empty");
+    } else if (!emailRegex.test(formData.email)) {
+      stepErrors.email = "Please enter a valid email address";
+      console.log("❌ Email validation failed: invalid format");
+    } else {
+      console.log("✅ Email validation passed");
+    }
+
+    // Password validation
+    if (!formData.password) {
+      stepErrors.password = "Password is required";
+      console.log("❌ Password validation failed: empty");
+    } else if (formData.password.length < 8) {
+      stepErrors.password = "Password must be at least 8 characters";
+      console.log("❌ Password validation failed: too short");
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      stepErrors.password =
+        "Password must contain uppercase, lowercase, and number";
+      console.log("❌ Password validation failed: missing required characters");
+    } else {
+      console.log("✅ Password validation passed");
+    }
+
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      stepErrors.confirmPassword = "Please confirm your password";
+      console.log("❌ Confirm password validation failed: empty");
+    } else if (formData.confirmPassword !== formData.password) {
+      stepErrors.confirmPassword = "Passwords do not match";
+      console.log("❌ Confirm password validation failed: mismatch");
+    } else {
+      console.log("✅ Confirm password validation passed");
+    }
+
+    console.log("🔍 Validation results:", {
+      hasErrors: Object.keys(stepErrors).length > 0,
+      errorCount: Object.keys(stepErrors).length,
+      errors: stepErrors,
+    });
+
+    if (Object.keys(stepErrors).length > 0) {
+      console.log(
+        "❌ VALIDATION FAILED - Setting errors and staying on step 1"
+      );
+      setErrors(stepErrors);
+      return;
+    }
+
+    console.log("🎉 ALL VALIDATION PASSED - Moving to step 2");
+    setErrors({});
+    setStep(2);
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    console.log("🚀 Starting registration...");
 
     if (!validateStep(2)) {
       return;
@@ -177,15 +254,22 @@ const Register = ({ onLogin }) => {
     setLoading(true);
 
     try {
+      // ✅ FIXED: Only send fields that backend expects
       const response = await authApi.register({
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
-        restaurantName: formData.restaurantName.trim(),
+        restaurantName: formData.restaurantName.trim(), // ❌ THIS FIELD
         phone: formData.phone.trim(),
       });
 
       if (response.success) {
+        // Store restaurant name for later use during onboarding
+        localStorage.setItem(
+          "pendingRestaurantName",
+          formData.restaurantName.trim()
+        );
+
         toast.success(`Welcome to OrderChef, ${formData.name}! 🎉`);
         onLogin(response);
       } else {
@@ -288,14 +372,14 @@ const Register = ({ onLogin }) => {
         <div className="bg-white py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-gray-100">
           <form
             className="space-y-6"
-            onSubmit={
-              step === 1
-                ? (e) => {
-                    e.preventDefault();
-                    handleNextStep();
-                  }
-                : handleSubmit
-            }
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (step === 1) {
+                handleNextStep(e);
+              } else {
+                handleSubmit(e);
+              }
+            }}
           >
             {errors.submit && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">

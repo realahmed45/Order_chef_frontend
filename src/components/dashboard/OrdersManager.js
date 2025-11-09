@@ -7,7 +7,7 @@ import {
   formatDateTime,
   getTimeAgo,
   getOrderStatusColor,
-} from "../../utils/helpers";
+} from "../utils/helpers";
 
 const OrdersManager = ({ restaurant }) => {
   const { socket, connected } = useSocket();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { restaurantApi } from "../../api";
-import { formatCurrency } from "../../utils/helpers";
+import { formatCurrency } from "../utils/helpers";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { FormModal, ConfirmModal } from "../common/Modal";
 import toast from "react-hot-toast";

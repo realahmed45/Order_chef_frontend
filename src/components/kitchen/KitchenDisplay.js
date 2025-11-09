@@ -7,7 +7,7 @@ import {
   getOrderAgeColor,
   getOrderAgeClass,
   playNotificationSound,
-} from "../../utils/helpers";
+} from "../utils/helpers";
 import LoadingSpinner from "../common/LoadingSpinner";
 import EmptyState from "../common/EmptyState";
 

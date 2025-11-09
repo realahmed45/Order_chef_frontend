@@ -1,9 +1,5 @@
 import React, { useState } from "react";
-import {
-  formatCurrency,
-  formatTime,
-  getOrderAgeClass,
-} from "../../utils/helpers";
+import { formatCurrency, formatTime, getOrderAgeClass } from "../utils/helpers";
 
 const OrderCard = ({
   order,

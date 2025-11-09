@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { menuApi } from "../../api";
-import { formatCurrency } from "../../utils/helpers";
+import { formatCurrency } from "../utils/helpers";
 
 const MenuManager = ({ restaurant }) => {
   const [menuItems, setMenuItems] = useState([]);

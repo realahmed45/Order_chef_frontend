@@ -34,8 +34,8 @@ import {
   formatDate,
   formatDateTime,
 } from "../utils/helpers";
-import LoadingSpinner from "./common/LoadingSpinner";
-import { FormModal } from "./common/Modal";
+import LoadingSpinner from "../common/LoadingSpinner";
+import { FormModal } from "../common/Modal";
 
 const Analytics = ({ restaurant }) => {
   const [analytics, setAnalytics] = useState({});

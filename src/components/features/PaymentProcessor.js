@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  CreditCard, 
-  DollarSign, 
-  Check, 
-  X, 
-  Clock, 
+import React, { useState, useEffect } from "react";
+import {
+  CreditCard,
+  DollarSign,
+  Check,
+  X,
+  Clock,
   RefreshCw,
   Download,
   Eye,
@@ -12,11 +12,11 @@ import {
   Search,
   AlertCircle,
   TrendingUp,
-  Calendar
-} from 'lucide-react';
-import { formatCurrency, formatDateTime } from '../utils/helpers';
-import LoadingSpinner from './common/LoadingSpinner';
-import Modal from './common/Modal';
+  Calendar,
+} from "lucide-react";
+import { formatCurrency, formatDateTime } from "../utils/helpers";
+import LoadingSpinner from "../common/LoadingSpinner";
+import Modal from "../common/Modal";
 
 const PaymentProcessor = ({ restaurant }) => {
   const [payments, setPayments] = useState([]);
@@ -25,11 +25,11 @@ const PaymentProcessor = ({ restaurant }) => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [filters, setFilters] = useState({
-    status: 'all',
-    method: 'all',
-    dateRange: '7d'
+    status: "all",
+    method: "all",
+    dateRange: "7d",
   });
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [analytics, setAnalytics] = useState({});
 
   useEffect(() => {
@@ -40,21 +40,21 @@ const PaymentProcessor = ({ restaurant }) => {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/payments', {
-        method: 'POST',
+      const response = await fetch("/api/payments", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify(filters)
+        body: JSON.stringify(filters),
       });
-      
+
       const data = await response.json();
       if (data.success) {
         setPayments(data.payments);
       }
     } catch (error) {
-      console.error('Error fetching payments:', error);
+      console.error("Error fetching payments:", error);
     } finally {
       setLoading(false);
     }
@@ -62,17 +62,17 @@ const PaymentProcessor = ({ restaurant }) => {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch('/api/payments/analytics', {
+      const response = await fetch("/api/payments/analytics", {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
       const data = await response.json();
       if (data.success) {
         setAnalytics(data.analytics);
       }
     } catch (error) {
-      console.error('Error fetching payment analytics:', error);
+      console.error("Error fetching payment analytics:", error);
     }
   };
 
@@ -80,25 +80,25 @@ const PaymentProcessor = ({ restaurant }) => {
     try {
       setProcessing(true);
       const response = await fetch(`/api/payments/${paymentId}/refund`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ amount, reason })
+        body: JSON.stringify({ amount, reason }),
       });
 
       const data = await response.json();
       if (data.success) {
         fetchPayments();
         setShowRefundModal(false);
-        alert('Refund processed successfully!');
+        alert("Refund processed successfully!");
       } else {
-        alert('Refund failed: ' + data.message);
+        alert("Refund failed: " + data.message);
       }
     } catch (error) {
-      console.error('Error processing refund:', error);
-      alert('Refund failed. Please try again.');
+      console.error("Error processing refund:", error);
+      alert("Refund failed. Please try again.");
     } finally {
       setProcessing(false);
     }
@@ -108,21 +108,21 @@ const PaymentProcessor = ({ restaurant }) => {
     try {
       setProcessing(true);
       const response = await fetch(`/api/payments/${paymentId}/retry`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
 
       const data = await response.json();
       if (data.success) {
         fetchPayments();
-        alert('Payment retry initiated!');
+        alert("Payment retry initiated!");
       } else {
-        alert('Retry failed: ' + data.message);
+        alert("Retry failed: " + data.message);
       }
     } catch (error) {
-      console.error('Error retrying payment:', error);
+      console.error("Error retrying payment:", error);
     } finally {
       setProcessing(false);
     }
@@ -130,34 +130,36 @@ const PaymentProcessor = ({ restaurant }) => {
 
   const exportPayments = () => {
     const csvContent = [
-      ['Date', 'Order ID', 'Amount', 'Method', 'Status', 'Customer'],
-      ...filteredPayments.map(payment => [
+      ["Date", "Order ID", "Amount", "Method", "Status", "Customer"],
+      ...filteredPayments.map((payment) => [
         formatDateTime(payment.createdAt),
         payment.orderId,
         payment.amount,
         payment.method,
         payment.status,
-        payment.customerName || 'N/A'
-      ])
-    ].map(row => row.join(',')).join('\n');
+        payment.customerName || "N/A",
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `payments-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `payments-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
   };
 
   const getPaymentStatusColor = (status) => {
     const colors = {
-      completed: 'bg-green-100 text-green-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      failed: 'bg-red-100 text-red-800',
-      refunded: 'bg-blue-100 text-blue-800',
-      cancelled: 'bg-gray-100 text-gray-800'
+      completed: "bg-green-100 text-green-800",
+      pending: "bg-yellow-100 text-yellow-800",
+      failed: "bg-red-100 text-red-800",
+      refunded: "bg-blue-100 text-blue-800",
+      cancelled: "bg-gray-100 text-gray-800",
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || "bg-gray-100 text-gray-800";
   };
 
   const getPaymentStatusIcon = (status) => {
@@ -166,18 +168,22 @@ const PaymentProcessor = ({ restaurant }) => {
       pending: <Clock className="w-4 h-4" />,
       failed: <X className="w-4 h-4" />,
       refunded: <RefreshCw className="w-4 h-4" />,
-      cancelled: <X className="w-4 h-4" />
+      cancelled: <X className="w-4 h-4" />,
     };
     return icons[status] || <Clock className="w-4 h-4" />;
   };
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (payment.customerName && payment.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = filters.status === 'all' || payment.status === filters.status;
-    const matchesMethod = filters.method === 'all' || payment.method === filters.method;
-    
+  const filteredPayments = payments.filter((payment) => {
+    const matchesSearch =
+      payment.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (payment.customerName &&
+        payment.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus =
+      filters.status === "all" || payment.status === filters.status;
+    const matchesMethod =
+      filters.method === "all" || payment.method === filters.method;
+
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
@@ -194,8 +200,12 @@ const PaymentProcessor = ({ restaurant }) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Payment Management</h2>
-          <p className="text-gray-600">Process payments, refunds, and track financial transactions</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Payment Management
+          </h2>
+          <p className="text-gray-600">
+            Process payments, refunds, and track financial transactions
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
@@ -230,8 +240,12 @@ const PaymentProcessor = ({ restaurant }) => {
               <CreditCard className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Successful Payments</p>
-              <p className="text-2xl font-bold text-gray-900">{analytics.successfulPayments || 0}</p>
+              <p className="text-sm font-medium text-gray-600">
+                Successful Payments
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {analytics.successfulPayments || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -243,7 +257,9 @@ const PaymentProcessor = ({ restaurant }) => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-gray-900">{analytics.pendingPayments || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {analytics.pendingPayments || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -255,7 +271,9 @@ const PaymentProcessor = ({ restaurant }) => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Failed</p>
-              <p className="text-2xl font-bold text-gray-900">{analytics.failedPayments || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {analytics.failedPayments || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -265,7 +283,9 @@ const PaymentProcessor = ({ restaurant }) => {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search
+            </label>
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <input
@@ -279,10 +299,14 @@ const PaymentProcessor = ({ restaurant }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status
+            </label>
             <select
               value={filters.status}
-              onChange={(e) => setFilters({...filters, status: e.target.value})}
+              onChange={(e) =>
+                setFilters({ ...filters, status: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
             >
               <option value="all">All Status</option>
@@ -294,10 +318,14 @@ const PaymentProcessor = ({ restaurant }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Method
+            </label>
             <select
               value={filters.method}
-              onChange={(e) => setFilters({...filters, method: e.target.value})}
+              onChange={(e) =>
+                setFilters({ ...filters, method: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
             >
               <option value="all">All Methods</option>
@@ -308,10 +336,14 @@ const PaymentProcessor = ({ restaurant }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date Range
+            </label>
             <select
               value={filters.dateRange}
-              onChange={(e) => setFilters({...filters, dateRange: e.target.value})}
+              onChange={(e) =>
+                setFilters({ ...filters, dateRange: e.target.value })
+              }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
             >
               <option value="1d">Last 24 Hours</option>
@@ -374,7 +406,7 @@ const PaymentProcessor = ({ restaurant }) => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        {payment.customerName || 'Guest'}
+                        {payment.customerName || "Guest"}
                       </div>
                       <div className="text-sm text-gray-500">
                         {payment.customerEmail}
@@ -395,12 +427,16 @@ const PaymentProcessor = ({ restaurant }) => {
                     <div className="flex items-center">
                       <CreditCard className="w-4 h-4 mr-2 text-gray-400" />
                       <span className="text-sm text-gray-900 capitalize">
-                        {payment.method.replace('_', ' ')}
+                        {payment.method.replace("_", " ")}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(payment.status)}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(
+                        payment.status
+                      )}`}
+                    >
                       {getPaymentStatusIcon(payment.status)}
                       <span className="ml-1 capitalize">{payment.status}</span>
                     </span>
@@ -416,8 +452,8 @@ const PaymentProcessor = ({ restaurant }) => {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      
-                      {payment.status === 'completed' && (
+
+                      {payment.status === "completed" && (
                         <button
                           onClick={() => {
                             setSelectedPayment(payment);
@@ -428,8 +464,8 @@ const PaymentProcessor = ({ restaurant }) => {
                           <RefreshCw className="w-4 h-4" />
                         </button>
                       )}
-                      
-                      {payment.status === 'failed' && (
+
+                      {payment.status === "failed" && (
                         <button
                           onClick={() => retryFailedPayment(payment.id)}
                           disabled={processing}
@@ -449,9 +485,13 @@ const PaymentProcessor = ({ restaurant }) => {
         {filteredPayments.length === 0 && (
           <div className="text-center py-12">
             <CreditCard className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No payments found</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              No payments found
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm ? 'Try adjusting your search criteria' : 'Payments will appear here as orders are processed'}
+              {searchTerm
+                ? "Try adjusting your search criteria"
+                : "Payments will appear here as orders are processed"}
             </p>
           </div>
         )}
@@ -468,27 +508,41 @@ const PaymentProcessor = ({ restaurant }) => {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Transaction Information</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  Transaction Information
+                </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Order ID:</span>
-                    <span className="font-medium">#{selectedPayment.orderId}</span>
+                    <span className="font-medium">
+                      #{selectedPayment.orderId}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Transaction ID:</span>
-                    <span className="font-medium">{selectedPayment.transactionId}</span>
+                    <span className="font-medium">
+                      {selectedPayment.transactionId}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Amount:</span>
-                    <span className="font-medium">{formatCurrency(selectedPayment.amount)}</span>
+                    <span className="font-medium">
+                      {formatCurrency(selectedPayment.amount)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Method:</span>
-                    <span className="font-medium capitalize">{selectedPayment.method.replace('_', ' ')}</span>
+                    <span className="font-medium capitalize">
+                      {selectedPayment.method.replace("_", " ")}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getPaymentStatusColor(selectedPayment.status)}`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${getPaymentStatusColor(
+                        selectedPayment.status
+                      )}`}
+                    >
                       {selectedPayment.status}
                     </span>
                   </div>
@@ -496,23 +550,33 @@ const PaymentProcessor = ({ restaurant }) => {
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Customer Information</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  Customer Information
+                </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{selectedPayment.customerName || 'Guest'}</span>
+                    <span className="font-medium">
+                      {selectedPayment.customerName || "Guest"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
-                    <span className="font-medium">{selectedPayment.customerEmail || 'N/A'}</span>
+                    <span className="font-medium">
+                      {selectedPayment.customerEmail || "N/A"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Phone:</span>
-                    <span className="font-medium">{selectedPayment.customerPhone || 'N/A'}</span>
+                    <span className="font-medium">
+                      {selectedPayment.customerPhone || "N/A"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date:</span>
-                    <span className="font-medium">{formatDateTime(selectedPayment.createdAt)}</span>
+                    <span className="font-medium">
+                      {formatDateTime(selectedPayment.createdAt)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -520,15 +584,24 @@ const PaymentProcessor = ({ restaurant }) => {
 
             {selectedPayment.refunds && selectedPayment.refunds.length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Refund History</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  Refund History
+                </h4>
                 <div className="space-y-2">
                   {selectedPayment.refunds.map((refund, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div
+                      key={index}
+                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                    >
                       <div>
-                        <span className="font-medium">{formatCurrency(refund.amount)}</span>
+                        <span className="font-medium">
+                          {formatCurrency(refund.amount)}
+                        </span>
                         <p className="text-sm text-gray-600">{refund.reason}</p>
                       </div>
-                      <span className="text-sm text-gray-500">{formatDateTime(refund.date)}</span>
+                      <span className="text-sm text-gray-500">
+                        {formatDateTime(refund.date)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -557,12 +630,12 @@ const PaymentProcessor = ({ restaurant }) => {
 // Refund Modal Component
 const RefundModal = ({ payment, onClose, onRefund, processing }) => {
   const [refundAmount, setRefundAmount] = useState(payment.amount);
-  const [refundReason, setRefundReason] = useState('');
+  const [refundReason, setRefundReason] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!refundAmount || !refundReason) {
-      alert('Please enter refund amount and reason');
+      alert("Please enter refund amount and reason");
       return;
     }
     onRefund(payment.id, refundAmount, refundReason);
@@ -571,12 +644,7 @@ const RefundModal = ({ payment, onClose, onRefund, processing }) => {
   const maxRefundAmount = payment.amount - (payment.refundedAmount || 0);
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Process Refund"
-      size="md"
-    >
+    <Modal isOpen={true} onClose={onClose} title="Process Refund" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -641,7 +709,7 @@ const RefundModal = ({ payment, onClose, onRefund, processing }) => {
             className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
             disabled={processing}
           >
-            {processing ? 'Processing...' : 'Process Refund'}
+            {processing ? "Processing..." : "Process Refund"}
           </button>
         </div>
       </form>

@@ -183,4 +183,6 @@ export const deploymentApi = {
   },
 };
 
-export default api;
+export { api };
+// named export
+export default api; // default export

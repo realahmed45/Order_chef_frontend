@@ -22,7 +22,7 @@ import Register from "./components/auth/Register";
 
 // Main Pages
 import Onboarding from "./components/onboarding/Onboarding";
-import Dashboard from "./components/dashoard/Dashboard";
+import Dashboard from "./components/dashboard/Dashboard";
 import KitchenDisplay from "./components/kitchen/KitchenDisplay";
 
 // Feature Centers (New Advanced Features)
@@ -198,16 +198,12 @@ function App() {
                 }
               />
 
-              {/* Main Dashboard */}
+              {/* Main Dashboard - SIMPLIFIED FOR TESTING */}
               <Route
                 path="/dashboard/*"
                 element={
                   user ? (
-                    user.onboarding?.completed ? (
-                      <Dashboard user={user} />
-                    ) : (
-                      <Navigate to="/onboarding" replace />
-                    )
+                    <Dashboard user={user} />
                   ) : (
                     <Navigate to="/login" replace />
                   )

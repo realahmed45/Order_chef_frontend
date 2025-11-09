@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { formatCurrency, formatDate, getTimeAgo } from "../../utils/helpers";
+import { formatCurrency, formatDate, getTimeAgo } from "../utils/helpers";
 import {
   ChartBarIcon,
   UsersIcon,
@@ -12,7 +12,7 @@ import {
   EyeIcon,
   Cog6ToothIcon,
   PlusIcon,
-  ExternalLinkIcon,
+  ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
 
 const DashboardOverview = ({ restaurant, analytics, refreshAnalytics }) => {
@@ -265,7 +265,7 @@ const DashboardOverview = ({ restaurant, analytics, refreshAnalytics }) => {
               className="text-sm text-orange-600 hover:text-orange-700 font-medium flex items-center"
             >
               View All
-              <ExternalLinkIcon className="h-4 w-4 ml-1" />
+              <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-1" />
             </button>
           </div>
 
@@ -357,7 +357,7 @@ const DashboardOverview = ({ restaurant, analytics, refreshAnalytics }) => {
                     >
                       <EyeIcon className="h-4 w-4 mr-1" />
                       View Live Website
-                      <ExternalLinkIcon className="h-3 w-3 ml-1" />
+                      <ArrowTopRightOnSquareIcon className="h-3 w-3 ml-1" />
                     </a>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { customersApi } from "../../api";
-import { formatCurrency, formatDate, formatPhone } from "../../utils/helpers";
+import { formatCurrency, formatDate, formatPhone } from "../utils/helpers";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { NoCustomersEmptyState, SearchEmptyState } from "../common/EmptyState";
 import Modal from "../common/Modal";

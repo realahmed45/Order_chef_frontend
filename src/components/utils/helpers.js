@@ -158,6 +158,20 @@ export const playNotificationSound = () => {
   audio.play().catch((e) => console.log("Could not play sound:", e));
 };
 
+// Format duration (e.g. converts seconds or milliseconds into human readable time)
+export const formatDuration = (durationInSeconds) => {
+  if (durationInSeconds == null || isNaN(durationInSeconds)) return "0s";
+
+  const totalSeconds = Math.floor(durationInSeconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
 // Request notification permission
 export const requestNotificationPermission = async () => {
   if ("Notification" in window && Notification.permission === "default") {
@@ -197,6 +211,21 @@ export const downloadJSON = (data, filename) => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+};
+
+// Format file sizes (bytes → KB, MB, GB)
+export const formatFileSize = (bytes) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+// Format percentage (e.g. 0.1234 → "12.34%")
+export const formatPercent = (value, decimals = 2) => {
+  if (value == null || isNaN(value)) return "0%";
+  return `${(value * 100).toFixed(decimals)}%`;
 };
 
 // Download as CSV
@@ -244,4 +273,7 @@ export default {
   copyToClipboard,
   downloadJSON,
   downloadCSV,
+  formatDuration,
+  formatPercent,
+  formatFileSize,
 };

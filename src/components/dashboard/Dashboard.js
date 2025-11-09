@@ -7,9 +7,11 @@ import { useSocket } from "../../context/SocketContext";
 
 // API
 import { restaurantApi, analyticsApi } from "../../api";
+import LoadingSpinner from "../common/LoadingSpinner";
+import Modal from "../common/Modal";
 
 // Utils
-import { playNotificationSound, showNotification } from "../../utils/helpers";
+import { playNotificationSound, showNotification } from "../utils/helpers";
 
 // Dashboard Components
 import DashboardOverview from "./DashboardOverview";
@@ -19,6 +21,18 @@ import CustomersManager from "./CustomersManager";
 import InventoryManager from "./InventoryManager";
 import Analytics from "./Analytics";
 import Settings from "./Settings";
+
+// Advanced Features
+import QRCodeManager from "./QRCodeManager";
+import SocialOrderingManager from "./SocialOrderingManager";
+import MultiLocationManager from "./MultiLocationManager";
+import LoyaltyProgramManager from "./LoyaltyProgramManager";
+import AIPhoneManager from "./AIPhoneManager";
+import WebsiteDeploymentManager from "./WebsiteDeploymentManager";
+
+// NEW COMPONENTS
+import StaffManager from "../features/StaffManager";
+import PaymentManager from "./PaymentManager";
 
 const Dashboard = ({ user }) => {
   const navigate = useNavigate();
@@ -121,7 +135,15 @@ const Dashboard = ({ user }) => {
     { id: "menu", name: "Menu", icon: "📝", path: "menu" },
     { id: "customers", name: "Customers", icon: "👥", path: "customers" },
     { id: "inventory", name: "Inventory", icon: "📦", path: "inventory" },
+    { id: "staff", name: "Staff", icon: "👨‍💼", path: "staff" },
+    { id: "payments", name: "Payments", icon: "💳", path: "payments" },
     { id: "analytics", name: "Analytics", icon: "📈", path: "analytics" },
+    { id: "qr-codes", name: "QR Codes", icon: "📱", path: "qr-codes" },
+    { id: "social", name: "Social", icon: "💬", path: "social" },
+    { id: "loyalty", name: "Loyalty", icon: "🎯", path: "loyalty" },
+    { id: "ai-phone", name: "AI Phone", icon: "☎️", path: "ai-phone" },
+    { id: "website", name: "Website", icon: "🌐", path: "website" },
+    { id: "multi-location", name: "Locations", icon: "🏢", path: "locations" },
     { id: "settings", name: "Settings", icon: "⚙️", path: "settings" },
   ];
 
@@ -225,7 +247,7 @@ const Dashboard = ({ user }) => {
               <button
                 key={tab.id}
                 onClick={() => navigate(`/dashboard/${tab.path}`)}
-                className={`flex items-center space-x-2 px-6 py-4 border-b-2 font-medium text-sm whitespace-nowrap transition ${
+                className={`flex items-center space-x-2 px-4 py-4 border-b-2 font-medium text-sm whitespace-nowrap transition ${
                   activeTab === tab.id
                     ? "border-orange-500 text-orange-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -269,8 +291,40 @@ const Dashboard = ({ user }) => {
             element={<InventoryManager restaurant={restaurant} />}
           />
           <Route
+            path="staff"
+            element={<StaffManager restaurant={restaurant} />}
+          />
+          <Route
+            path="payments"
+            element={<PaymentManager restaurant={restaurant} />}
+          />
+          <Route
             path="analytics"
             element={<Analytics restaurant={restaurant} />}
+          />
+          <Route
+            path="qr-codes"
+            element={<QRCodeManager restaurant={restaurant} />}
+          />
+          <Route
+            path="social"
+            element={<SocialOrderingManager restaurant={restaurant} />}
+          />
+          <Route
+            path="loyalty"
+            element={<LoyaltyProgramManager restaurant={restaurant} />}
+          />
+          <Route
+            path="ai-phone"
+            element={<AIPhoneManager restaurant={restaurant} />}
+          />
+          <Route
+            path="website"
+            element={<WebsiteDeploymentManager restaurant={restaurant} />}
+          />
+          <Route
+            path="locations"
+            element={<MultiLocationManager restaurant={restaurant} />}
           />
           <Route
             path="settings"

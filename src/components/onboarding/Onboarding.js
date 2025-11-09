@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from "react";
 import AdvancedWebsiteBuilder from "./WebsitCustomizer";
+import { authApi } from "../../api";
 
-const ImprovedOnboarding = () => {
+const ImprovedOnboarding = ({ user, onUpdateUser }) => {
   const [step, setStep] = useState(1);
   const [restaurantData, setRestaurantData] = useState({
     _id: null,
@@ -132,7 +133,34 @@ const ImprovedOnboarding = () => {
     }, 2000);
   }, []);
 
-  // **NEW: Deploy to Vercel (real hosting)**
+  // ✅ COMPLETE ONBOARDING FUNCTION
+  const completeOnboarding = useCallback(async () => {
+    try {
+      console.log("🎉 Marking onboarding as completed...");
+      const response = await authApi.completeOnboarding();
+
+      if (response.success) {
+        console.log("✅ Onboarding completed successfully");
+
+        // Update user in localStorage
+        localStorage.setItem("user", JSON.stringify(response.user));
+
+        // Update parent component's user state
+        if (onUpdateUser) {
+          onUpdateUser(response.user);
+        }
+
+        return true;
+      } else {
+        throw new Error(response.message || "Failed to complete onboarding");
+      }
+    } catch (error) {
+      console.error("❌ Failed to complete onboarding:", error);
+      throw error;
+    }
+  }, [onUpdateUser]);
+
+  // **FIXED: Deploy to Vercel with onboarding completion**
   const handleDeploy = useCallback(async () => {
     if (!restaurantData._id) {
       alert("Please complete restaurant setup first (Step 1)");
@@ -183,9 +211,19 @@ const ImprovedOnboarding = () => {
       if (response.ok && data.success) {
         setDeployed(true);
         setWebsiteUrl(data.websiteUrl);
-        alert(
-          `🎉 Website deployed successfully!\n\nYour website is live at:\n${data.websiteUrl}\n\nAccessible from anywhere in the world!`
-        );
+
+        // 🎉 MARK ONBOARDING AS COMPLETED
+        try {
+          await completeOnboarding();
+          alert(
+            `🎉 Website deployed successfully!\n\nYour website is live at:\n${data.websiteUrl}\n\n✅ Onboarding completed! You can now access your dashboard.`
+          );
+        } catch (onboardingError) {
+          console.error("Failed to mark onboarding complete:", onboardingError);
+          alert(
+            `🎉 Website deployed successfully!\n\nYour website is live at:\n${data.websiteUrl}\n\n⚠️ Please refresh the page to access your dashboard.`
+          );
+        }
       } else {
         throw new Error(data.message || "Deployment failed");
       }
@@ -197,7 +235,13 @@ const ImprovedOnboarding = () => {
     } finally {
       setDeploying(false);
     }
-  }, [restaurantData._id, restaurantData.name, config, menuItems]);
+  }, [
+    restaurantData._id,
+    restaurantData.name,
+    config,
+    menuItems,
+    completeOnboarding,
+  ]);
 
   // Save config and navigate to deployment
   const handleSaveConfig = useCallback(
@@ -553,7 +597,7 @@ const ImprovedOnboarding = () => {
             </h2>
             <p className="text-xl text-gray-600 mb-8">
               Congratulations! Your website is accessible from anywhere in the
-              world!
+              world and your onboarding is complete!
             </p>
 
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-8 mb-8">
@@ -618,7 +662,7 @@ const ImprovedOnboarding = () => {
               <h3 className="text-2xl font-bold mb-4">Ready to Go Live? 🚀</h3>
               <p className="text-gray-600 mb-6">
                 Your website will be deployed to Vercel and accessible from
-                anywhere in the world!
+                anywhere in the world! This will also complete your onboarding.
               </p>
               <button
                 onClick={handleDeploy}
@@ -647,10 +691,10 @@ const ImprovedOnboarding = () => {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       ></path>
                     </svg>
-                    Deploying to Vercel...
+                    Deploying & Completing Onboarding...
                   </span>
                 ) : (
-                  "🚀 Deploy to Vercel"
+                  "🚀 Deploy & Complete Setup"
                 )}
               </button>
               <p className="text-xs text-gray-500 mt-4">
