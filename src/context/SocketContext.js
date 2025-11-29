@@ -40,7 +40,8 @@ export const SocketProvider = ({ children, user }) => {
     console.log("🔌 Initializing Socket.IO connection...");
 
     const newSocket = io(
-      process.env.REACT_APP_API_URL || "http://localhost:5000",
+      process.env.REACT_APP_API_URL ||
+        "https://order-chef-backend.onrender.com",
       {
         auth: {
           userId: user.id,

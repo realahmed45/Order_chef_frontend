@@ -1,9 +1,13 @@
-import React, { useState, useCallback, useMemo } from "react";
-import AdvancedWebsiteBuilder from "./WebsitCustomizer";
+// Place this file at: frontend/src/components/onboarding/Onboarding.js
+// COMPLETE REPLACEMENT
+
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { authApi } from "../../api";
 
 const ImprovedOnboarding = ({ user, onUpdateUser }) => {
   const [step, setStep] = useState(1);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [restaurantData, setRestaurantData] = useState({
     _id: null,
     name: "",
@@ -11,18 +15,39 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
     phone: "",
     email: "",
     address: "",
+    city: "",
+    state: "",
+    zipCode: "",
     cuisine: "",
   });
   const [menuItems, setMenuItems] = useState([]);
-  const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [uploadMethod, setUploadMethod] = useState("ai");
   const [deploying, setDeploying] = useState(false);
   const [deployed, setDeployed] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [savingRestaurant, setSavingRestaurant] = useState(false);
 
   const totalSteps = 4;
+
+  // Load templates on mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const response = await fetch(
+        "https://order-chef-backend.onrender.com/api/templates/list"
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setTemplates(data.templates);
+        console.log("✅ Loaded", data.templates.length, "templates");
+      }
+    } catch (error) {
+      console.error("Failed to load templates:", error);
+    }
+  };
 
   // Create/Save Restaurant
   const handleSaveRestaurant = useCallback(async () => {
@@ -31,9 +56,7 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
       !restaurantData.phone ||
       !restaurantData.cuisine
     ) {
-      alert(
-        "Please fill in all required fields: Restaurant Name, Phone, and Cuisine Type"
-      );
+      alert("Please fill in: Restaurant Name, Phone, and Cuisine Type");
       return false;
     }
 
@@ -42,13 +65,8 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
     try {
       const token = localStorage.getItem("token");
 
-      if (!token) {
-        alert("Please log in first");
-        return false;
-      }
-
       const response = await fetch(
-        "http://localhost:5000/api/onboarding/restaurant",
+        "https://order-chef-backend.onrender.com/api/onboarding/restaurant",
         {
           method: "POST",
           headers: {
@@ -64,6 +82,9 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
               email: restaurantData.email,
               address: {
                 street: restaurantData.address,
+                city: restaurantData.city,
+                state: restaurantData.state,
+                zipCode: restaurantData.zipCode,
               },
             },
           }),
@@ -78,7 +99,7 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
           _id: data.restaurant._id || data.restaurant.id,
         }));
 
-        console.log("✅ Restaurant created with ID:", data.restaurant._id);
+        console.log("✅ Restaurant created:", data.restaurant._id);
         return true;
       } else {
         throw new Error(data.message || "Failed to create restaurant");
@@ -92,85 +113,35 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
     }
   }, [restaurantData]);
 
-  // Navigation with restaurant creation
-  const handleNextStep = useCallback(async () => {
-    if (step === 1) {
-      const success = await handleSaveRestaurant();
-      if (!success) return;
-    }
-
-    setStep(step + 1);
-  }, [step, handleSaveRestaurant]);
-
-  // File upload handler
-  const handleFileUpload = useCallback(async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setLoading(true);
-    setTimeout(() => {
-      setMenuItems([
-        {
-          name: "Margherita Pizza",
-          price: 12.99,
-          description: "Classic tomato and mozzarella",
-          category: "Pizza",
-        },
-        {
-          name: "Caesar Salad",
-          price: 8.99,
-          description: "Fresh romaine with parmesan",
-          category: "Salads",
-        },
-        {
-          name: "Spaghetti Carbonara",
-          price: 14.99,
-          description: "Creamy pasta with bacon",
-          category: "Pasta",
-        },
-      ]);
-      setLoading(false);
-    }, 2000);
-  }, []);
-
-  // ✅ COMPLETE ONBOARDING FUNCTION
+  // Complete onboarding
   const completeOnboarding = useCallback(async () => {
     try {
-      console.log("🎉 Marking onboarding as completed...");
       const response = await authApi.completeOnboarding();
-
       if (response.success) {
-        console.log("✅ Onboarding completed successfully");
-
-        // Update user in localStorage
         localStorage.setItem("user", JSON.stringify(response.user));
-
-        // Update parent component's user state
         if (onUpdateUser) {
           onUpdateUser(response.user);
         }
-
         return true;
-      } else {
-        throw new Error(response.message || "Failed to complete onboarding");
       }
+      throw new Error(response.message);
     } catch (error) {
-      console.error("❌ Failed to complete onboarding:", error);
+      console.error("Failed to complete onboarding:", error);
       throw error;
     }
   }, [onUpdateUser]);
 
-  // **FIXED: Deploy to Vercel with onboarding completion**
+  // Deploy website
   const handleDeploy = useCallback(async () => {
     if (!restaurantData._id) {
-      alert("Please complete restaurant setup first (Step 1)");
-      setStep(1);
+      alert("Please complete restaurant setup first");
+      setStep(2);
       return;
     }
 
-    if (!config) {
-      alert("Please customize your website first (Step 3)");
-      setStep(3);
+    if (!selectedTemplate) {
+      alert("Please select a template");
+      setStep(1);
       return;
     }
 
@@ -179,16 +150,10 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
     try {
       const token = localStorage.getItem("token");
 
-      if (!token) {
-        throw new Error("No authentication token found. Please log in again.");
-      }
-
-      console.log("🚀 Deploying to Vercel...");
-      console.log("Restaurant:", restaurantData.name);
-      console.log("Config:", config);
+      console.log("🚀 Deploying React website...");
 
       const response = await fetch(
-        "http://localhost:5000/api/deployments/deploy-vercel",
+        "https://order-chef-backend.onrender.com/api/deployments/deploy-react",
         {
           method: "POST",
           headers: {
@@ -197,31 +162,30 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
           },
           body: JSON.stringify({
             restaurantId: restaurantData._id,
-            restaurantName: restaurantData.name,
-            config: config,
-            menuItems: menuItems,
+            templateId: selectedTemplate.id,
+            restaurantData: restaurantData,
+            menuItems: menuItems.filter((i) => i.name && i.price),
           }),
         }
       );
 
       const data = await response.json();
 
-      console.log("Deployment response:", data);
-
       if (response.ok && data.success) {
         setDeployed(true);
         setWebsiteUrl(data.websiteUrl);
 
-        // 🎉 MARK ONBOARDING AS COMPLETED
         try {
           await completeOnboarding();
           alert(
-            `🎉 Website deployed successfully!\n\nYour website is live at:\n${data.websiteUrl}\n\n✅ Onboarding completed! You can now access your dashboard.`
+            `🎉 Website deployed!\n\nYour live website:\n${data.websiteUrl}\n\n✅ Onboarding complete!`
           );
-        } catch (onboardingError) {
-          console.error("Failed to mark onboarding complete:", onboardingError);
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 2000);
+        } catch (error) {
           alert(
-            `🎉 Website deployed successfully!\n\nYour website is live at:\n${data.websiteUrl}\n\n⚠️ Please refresh the page to access your dashboard.`
+            `🎉 Website deployed!\n\n${data.websiteUrl}\n\n⚠️ Please refresh to access dashboard.`
           );
         }
       } else {
@@ -229,336 +193,546 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
       }
     } catch (error) {
       console.error("Deployment error:", error);
-      alert(
-        `Deployment failed: ${error.message}\n\nPlease check:\n1. VERCEL_TOKEN is set in backend .env\n2. Backend server is running\n3. Internet connection is working`
-      );
+      alert(`Deployment failed: ${error.message}`);
     } finally {
       setDeploying(false);
     }
-  }, [
-    restaurantData._id,
-    restaurantData.name,
-    config,
-    menuItems,
-    completeOnboarding,
-  ]);
+  }, [restaurantData, selectedTemplate, menuItems, completeOnboarding]);
 
-  // Save config and navigate to deployment
-  const handleSaveConfig = useCallback(
-    (newConfig) => {
-      console.log("💾 Config saved:", newConfig);
+  // Navigation
+  const handleNextStep = useCallback(async () => {
+    if (step === 1 && !selectedTemplate) {
+      alert("Please select a template");
+      return;
+    }
 
-      if (!restaurantData._id) {
-        alert("⚠️ Restaurant not created yet!\n\nPlease go back to Step 1.");
-        setStep(1);
-        return;
-      }
+    if (step === 2) {
+      const success = await handleSaveRestaurant();
+      if (!success) return;
+    }
 
-      setConfig(newConfig);
-      alert("✅ Website customization saved!\n\nProceed to deployment step.");
-      setStep(4);
-    },
-    [restaurantData._id]
+    setStep(step + 1);
+  }, [step, selectedTemplate, handleSaveRestaurant]);
+
+  // Menu management
+  const addMenuItem = () => {
+    setMenuItems([
+      ...menuItems,
+      {
+        id: Date.now(),
+        name: "",
+        price: "",
+        description: "",
+        category: "",
+      },
+    ]);
+  };
+
+  const updateMenuItem = (id, field, value) => {
+    setMenuItems(
+      menuItems.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const removeMenuItem = (id) => {
+    setMenuItems(menuItems.filter((item) => item.id !== id));
+  };
+
+  // STEP 1: Template Selection
+  const TemplateSelectionStep = useMemo(
+    () => (
+      <div className="step-container animate-fade-in">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              🎨 Choose Your Template
+            </h2>
+            <p className="text-xl text-gray-600">
+              Select a professional design for your restaurant website
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {templates.map((template) => (
+              <div
+                key={template.id}
+                onClick={() => setSelectedTemplate(template)}
+                className={`relative bg-white rounded-xl shadow-lg overflow-hidden cursor-pointer transition-all transform hover:scale-105 ${
+                  selectedTemplate?.id === template.id
+                    ? "ring-4 ring-orange-500"
+                    : "hover:shadow-2xl"
+                }`}
+              >
+                <div
+                  className="h-48 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${template.thumbnail})` }}
+                >
+                  {selectedTemplate?.id === template.id && (
+                    <div className="absolute top-2 right-2 bg-orange-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                      ✓ Selected
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {template.name}
+                    </h3>
+                    <span className="text-xs px-2 py-1 bg-orange-100 text-orange-600 rounded-full font-semibold">
+                      {template.category}
+                    </span>
+                  </div>
+
+                  <p className="text-gray-600 text-sm mb-4">
+                    {template.description}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {template.features.slice(0, 2).map((feature, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded"
+                      >
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {templates.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading templates...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    ),
+    [templates, selectedTemplate]
   );
 
-  // Step 1: Restaurant Information
+  // STEP 2: Restaurant Info
   const RestaurantInfoStep = useMemo(
     () => (
       <div className="step-container animate-fade-in">
-        <div className="step-header">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            🍽️ Tell us about your restaurant
-          </h2>
-          <p className="text-gray-600">Let's start with the basics</p>
-        </div>
-
-        <div className="form-container mt-8 space-y-6">
-          <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Restaurant Name *
-            </label>
-            <input
-              type="text"
-              value={restaurantData.name}
-              onChange={(e) =>
-                setRestaurantData({ ...restaurantData, name: e.target.value })
-              }
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
-              placeholder="e.g., Bella's Italian Kitchen"
-              required
-            />
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">
+              🏪 Restaurant Information
+            </h2>
+            <p className="text-gray-600">Tell us about your restaurant</p>
           </div>
 
-          <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={restaurantData.description}
-              onChange={(e) =>
-                setRestaurantData({
-                  ...restaurantData,
-                  description: e.target.value,
-                })
-              }
-              rows="3"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              placeholder="Tell customers what makes your restaurant special..."
-            />
-          </div>
+          <div className="bg-white rounded-xl shadow-lg p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Restaurant Name *
+                </label>
+                <input
+                  type="text"
+                  value={restaurantData.name}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      name: e.target.value,
+                    })
+                  }
+                  placeholder="Joe's Pizza Palace"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number *
-              </label>
-              <input
-                type="tel"
-                value={restaurantData.phone}
-                onChange={(e) =>
-                  setRestaurantData({
-                    ...restaurantData,
-                    phone: e.target.value,
-                  })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="(555) 123-4567"
-                required
-              />
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={restaurantData.description}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="What makes your restaurant special..."
+                  rows="3"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  value={restaurantData.phone}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      phone: e.target.value,
+                    })
+                  }
+                  placeholder="(555) 123-4567"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cuisine Type *
+                </label>
+                <select
+                  value={restaurantData.cuisine}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      cuisine: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value="">Select...</option>
+                  <option value="italian">Italian</option>
+                  <option value="chinese">Chinese</option>
+                  <option value="mexican">Mexican</option>
+                  <option value="indian">Indian</option>
+                  <option value="american">American</option>
+                  <option value="pizza">Pizza</option>
+                  <option value="thai">Thai</option>
+                  <option value="burger">Burger</option>
+                  <option value="cafe">Cafe</option>
+                  <option value="bakery">Bakery</option>
+                  <option value="bbq">BBQ</option>
+                  <option value="seafood">Seafood</option>
+                  <option value="vegetarian">Vegetarian</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={restaurantData.email}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      email: e.target.value,
+                    })
+                  }
+                  placeholder="contact@restaurant.com"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Street Address
+                </label>
+                <input
+                  type="text"
+                  value={restaurantData.address}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      address: e.target.value,
+                    })
+                  }
+                  placeholder="123 Main Street"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={restaurantData.city}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      city: e.target.value,
+                    })
+                  }
+                  placeholder="New York"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  State
+                </label>
+                <input
+                  type="text"
+                  value={restaurantData.state}
+                  onChange={(e) =>
+                    setRestaurantData({
+                      ...restaurantData,
+                      state: e.target.value,
+                    })
+                  }
+                  placeholder="NY"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
             </div>
-
-            <div className="form-group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={restaurantData.email}
-                onChange={(e) =>
-                  setRestaurantData({
-                    ...restaurantData,
-                    email: e.target.value,
-                  })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="contact@restaurant.com"
-              />
-            </div>
           </div>
-
-          <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Address
-            </label>
-            <input
-              type="text"
-              value={restaurantData.address}
-              onChange={(e) =>
-                setRestaurantData({
-                  ...restaurantData,
-                  address: e.target.value,
-                })
-              }
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              placeholder="123 Main St, City, State 12345"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cuisine Type *
-            </label>
-            <select
-              value={restaurantData.cuisine}
-              onChange={(e) =>
-                setRestaurantData({
-                  ...restaurantData,
-                  cuisine: e.target.value,
-                })
-              }
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              required
-            >
-              <option value="">Select cuisine type...</option>
-              <option value="pizza">Pizza</option>
-              <option value="burger">Burger</option>
-              <option value="italian">Italian</option>
-              <option value="chinese">Chinese</option>
-              <option value="mexican">Mexican</option>
-              <option value="american">American</option>
-              <option value="indian">Indian</option>
-              <option value="japanese">Japanese</option>
-              <option value="thai">Thai</option>
-              <option value="cafe">Cafe</option>
-              <option value="bakery">Bakery</option>
-              <option value="bbq">BBQ</option>
-              <option value="seafood">Seafood</option>
-              <option value="vegetarian">Vegetarian</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          {restaurantData._id && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-700">
-                ✅ Restaurant saved! ID: {restaurantData._id}
-              </p>
-            </div>
-          )}
         </div>
       </div>
     ),
     [restaurantData]
   );
 
-  // Step 2: Menu Upload (keeping your existing implementation)
-  const MenuUploadStep = useMemo(
+  // STEP 3: Menu Items
+  const MenuItemsStep = useMemo(
     () => (
       <div className="step-container animate-fade-in">
-        <div className="step-header">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            📋 Add your menu
-          </h2>
-          <p className="text-gray-600">
-            Upload your menu or add items manually
-          </p>
-        </div>
-
-        <div className="mt-8">
-          <div className="flex space-x-4 mb-6">
-            <button
-              onClick={() => setUploadMethod("ai")}
-              className={`flex-1 py-4 px-6 rounded-lg font-semibold transition ${
-                uploadMethod === "ai"
-                  ? "bg-orange-600 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              🤖 AI Extract
-            </button>
-            <button
-              onClick={() => setUploadMethod("manual")}
-              className={`flex-1 py-4 px-6 rounded-lg font-semibold transition ${
-                uploadMethod === "manual"
-                  ? "bg-orange-600 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              ✍️ Manual Entry
-            </button>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">
+              📋 Add Menu Items
+            </h2>
+            <p className="text-gray-600">Add dishes to your menu</p>
           </div>
 
-          {uploadMethod === "ai" ? (
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-8 border-2 border-dashed border-orange-300">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-orange-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-4xl">📸</span>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Upload Your Menu
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Upload a photo or PDF of your menu
-                </p>
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="menu-upload"
-                />
-                <label
-                  htmlFor="menu-upload"
-                  className="inline-block bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold cursor-pointer hover:bg-orange-700 transition"
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="space-y-6">
+              {menuItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-gray-50 p-6 rounded-lg relative"
                 >
-                  Choose File
-                </label>
-              </div>
+                  <button
+                    onClick={() => removeMenuItem(item.id)}
+                    className="absolute top-4 right-4 text-red-500 hover:text-red-700 text-xl font-bold"
+                  >
+                    ✕
+                  </button>
 
-              {loading && (
-                <div className="mt-6 text-center">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-                  <p className="mt-4 text-orange-700 font-medium">
-                    AI is extracting your menu...
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dish Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) =>
+                          updateMenuItem(item.id, "name", e.target.value)
+                        }
+                        placeholder="Margherita Pizza"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Price *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.price}
+                        onChange={(e) =>
+                          updateMenuItem(item.id, "price", e.target.value)
+                        }
+                        placeholder="12.99"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={item.description}
+                        onChange={(e) =>
+                          updateMenuItem(item.id, "description", e.target.value)
+                        }
+                        placeholder="Delicious description..."
+                        rows="2"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Category
+                      </label>
+                      <input
+                        type="text"
+                        value={item.category}
+                        onChange={(e) =>
+                          updateMenuItem(item.id, "category", e.target.value)
+                        }
+                        placeholder="Appetizers, Mains, Desserts"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                onClick={addMenuItem}
+                className="w-full py-6 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-500 hover:text-orange-500 transition font-semibold text-lg"
+              >
+                + Add Menu Item
+              </button>
+
+              {menuItems.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <p className="text-lg">No menu items yet</p>
+                  <p className="text-sm mt-2">
+                    Click "Add Menu Item" above to get started!
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    [menuItems]
+  );
 
-              {menuItems.length > 0 && !loading && (
-                <div className="mt-6 bg-white rounded-lg p-6">
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    ✅ Extracted {menuItems.length} items
-                  </h4>
-                  <div className="space-y-2">
-                    {menuItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center py-2 border-b border-gray-100"
-                      >
-                        <span className="text-gray-800">{item.name}</span>
-                        <span className="font-semibold text-orange-600">
-                          ${item.price}
-                        </span>
-                      </div>
-                    ))}
+  // STEP 4: Deploy
+  const DeployStep = useMemo(
+    () => (
+      <div className="step-container animate-fade-in">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-5xl font-bold text-gray-900 mb-4">
+              🚀 Ready to Launch!
+            </h2>
+            <p className="text-gray-600 text-xl">
+              We'll build your professional React website and deploy it live
+            </p>
+          </div>
+
+          {!deployed && !deploying && (
+            <div className="bg-white rounded-2xl shadow-2xl p-12 text-center">
+              <div className="mb-10">
+                <div className="w-32 h-32 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full mx-auto flex items-center justify-center mb-8 animate-pulse">
+                  <span className="text-6xl">🎨</span>
+                </div>
+                <h3 className="text-3xl font-bold mb-6">Review Your Details</h3>
+                <div className="text-left max-w-lg mx-auto space-y-4 mb-10 bg-gray-50 p-8 rounded-xl">
+                  <div className="flex justify-between text-lg">
+                    <span className="text-gray-600 font-medium">Template:</span>
+                    <span className="font-bold text-orange-600">
+                      {selectedTemplate?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-lg">
+                    <span className="text-gray-600 font-medium">
+                      Restaurant:
+                    </span>
+                    <span className="font-bold">{restaurantData.name}</span>
+                  </div>
+                  <div className="flex justify-between text-lg">
+                    <span className="text-gray-600 font-medium">
+                      Menu Items:
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {menuItems.filter((i) => i.name && i.price).length} items
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
+
+              <button
+                onClick={handleDeploy}
+                className="px-16 py-5 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-bold text-xl hover:from-orange-600 hover:to-pink-700 transition-all transform hover:scale-105 shadow-xl"
+              >
+                🚀 Deploy My Website Now
+              </button>
+
+              <p className="text-sm text-gray-500 mt-8 font-medium">
+                ⏱️ This may take 2-3 minutes. Please don't close this window.
+              </p>
             </div>
-          ) : (
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Add Menu Items</h3>
-              <div className="space-y-4">
-                {menuItems.map((item, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-4 gap-3 items-center"
-                  >
-                    <input
-                      type="text"
-                      placeholder="Item name"
-                      value={item.name}
-                      onChange={(e) => {
-                        const newItems = [...menuItems];
-                        newItems[index].name = e.target.value;
-                        setMenuItems(newItems);
-                      }}
-                      className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Price"
-                      value={item.price}
-                      onChange={(e) => {
-                        const newItems = [...menuItems];
-                        newItems[index].price = parseFloat(e.target.value);
-                        setMenuItems(newItems);
-                      }}
-                      className="px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                    <button
-                      onClick={() => {
-                        const newItems = menuItems.filter(
-                          (_, i) => i !== index
-                        );
-                        setMenuItems(newItems);
-                      }}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() =>
-                    setMenuItems([
-                      ...menuItems,
-                      { name: "", price: 0, description: "", category: "" },
-                    ])
-                  }
-                  className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-500 hover:text-orange-600"
+          )}
+
+          {deploying && (
+            <div className="bg-white rounded-2xl shadow-2xl p-16 text-center">
+              <div className="animate-spin w-24 h-24 border-8 border-orange-500 border-t-transparent rounded-full mx-auto mb-10"></div>
+              <h3 className="text-3xl font-bold mb-6">
+                Building Your Website...
+              </h3>
+              <p className="text-xl text-gray-600 mb-10">
+                Installing dependencies, compiling React, and deploying...
+              </p>
+              <div className="space-y-4 text-lg text-gray-500 max-w-md mx-auto">
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+                  <p>Installing packages...</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+                  <p>Building production bundle...</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+                  <p>Deploying to server...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {deployed && (
+            <div className="bg-white rounded-2xl shadow-2xl p-16 text-center">
+              <div className="w-32 h-32 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
+                <span className="text-7xl">🎉</span>
+              </div>
+              <h2 className="text-5xl font-bold text-gray-900 mb-6">
+                Your Website is Live!
+              </h2>
+              <p className="text-2xl text-gray-600 mb-12">
+                Congratulations! Your restaurant website is now online!
+              </p>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-10 mb-10">
+                <p className="text-lg text-gray-600 mb-4 font-medium">
+                  Your website URL:
+                </p>
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-3xl font-bold text-green-700 hover:text-green-800 break-all underline"
                 >
-                  + Add Item
+                  {websiteUrl}
+                </a>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-6 bg-green-600 text-white rounded-xl font-bold text-lg hover:bg-green-700 transition shadow-lg"
+                >
+                  🌐 Visit Website
+                </a>
+                <button
+                  onClick={() => (window.location.href = "/dashboard")}
+                  className="py-6 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition shadow-lg"
+                >
+                  📊 Go to Dashboard
                 </button>
               </div>
             </div>
@@ -566,193 +740,49 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
         </div>
       </div>
     ),
-    [uploadMethod, loading, menuItems, handleFileUpload]
+    [
+      deployed,
+      deploying,
+      selectedTemplate,
+      restaurantData,
+      menuItems,
+      websiteUrl,
+      handleDeploy,
+    ]
   );
-
-  // Step 3: Advanced Website Builder
-  const CustomizationStep = useMemo(
-    () => (
-      <div className="h-screen">
-        <AdvancedWebsiteBuilder
-          restaurant={restaurantData}
-          menuItems={menuItems}
-          onSave={handleSaveConfig}
-        />
-      </div>
-    ),
-    [restaurantData, menuItems, handleSaveConfig]
-  );
-
-  // Step 4: Deploy
-  const DeploymentStep = useMemo(() => {
-    if (deployed) {
-      return (
-        <div className="step-container animate-fade-in">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-5xl">🎉</span>
-            </div>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Your Website is Live!
-            </h2>
-            <p className="text-xl text-gray-600 mb-8">
-              Congratulations! Your website is accessible from anywhere in the
-              world and your onboarding is complete!
-            </p>
-
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-8 mb-8">
-              <p className="text-sm text-gray-600 mb-2">Your website URL:</p>
-              <a
-                href={websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-2xl font-bold text-green-700 hover:text-green-800 break-all"
-              >
-                {websiteUrl}
-              </a>
-              <p className="text-sm text-gray-600 mt-4">
-                ✅ Accessible from any device, anywhere
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <a
-                href={websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
-              >
-                🌐 Visit Website
-              </a>
-              <button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="py-4 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition"
-              >
-                📊 Go to Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="step-container animate-fade-in">
-        <div className="max-w-4xl mx-auto">
-          <div className="step-header text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              🚀 Deploy Your Website
-            </h2>
-            <p className="text-gray-600">
-              Deploy your website to Vercel - accessible worldwide!
-            </p>
-          </div>
-
-          <div className="mt-8 space-y-6">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">✅ Ready to Deploy</h3>
-              <ul className="space-y-2 text-gray-600">
-                <li>✓ Restaurant info saved</li>
-                <li>✓ Menu items added: {menuItems.length} items</li>
-                <li>✓ Website customized</li>
-              </ul>
-            </div>
-
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-8 text-center">
-              <h3 className="text-2xl font-bold mb-4">Ready to Go Live? 🚀</h3>
-              <p className="text-gray-600 mb-6">
-                Your website will be deployed to Vercel and accessible from
-                anywhere in the world! This will also complete your onboarding.
-              </p>
-              <button
-                onClick={handleDeploy}
-                disabled={deploying || !restaurantData._id || !config}
-                className="px-12 py-4 bg-orange-600 text-white rounded-lg font-semibold text-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deploying ? (
-                  <span className="flex items-center justify-center">
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Deploying & Completing Onboarding...
-                  </span>
-                ) : (
-                  "🚀 Deploy & Complete Setup"
-                )}
-              </button>
-              <p className="text-xs text-gray-500 mt-4">
-                Your website URL will be:{" "}
-                {restaurantData.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
-                .vercel.app
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }, [
-    deployed,
-    websiteUrl,
-    restaurantData,
-    menuItems,
-    config,
-    deploying,
-    handleDeploy,
-  ]);
 
   // Progress Bar
   const ProgressBar = useMemo(
     () => (
-      <div className="bg-white border-b border-gray-200 py-4 px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
+      <div className="bg-white border-b-2 border-gray-200 py-6 px-8 shadow-sm">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between">
             {[1, 2, 3, 4].map((stepNumber) => (
               <React.Fragment key={stepNumber}>
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
+                    className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl transition-all ${
                       step >= stepNumber
-                        ? "bg-orange-600 text-white"
-                        : "bg-gray-200 text-gray-600"
+                        ? "bg-gradient-to-br from-orange-500 to-pink-600 text-white shadow-lg"
+                        : "bg-gray-200 text-gray-500"
                     }`}
                   >
                     {stepNumber}
                   </div>
                   <span
-                    className={`text-xs mt-2 ${
-                      step >= stepNumber
-                        ? "text-orange-600 font-medium"
-                        : "text-gray-500"
+                    className={`text-sm mt-3 font-semibold ${
+                      step >= stepNumber ? "text-orange-600" : "text-gray-400"
                     }`}
                   >
-                    {
-                      ["Restaurant", "Menu", "Customize", "Deploy"][
-                        stepNumber - 1
-                      ]
-                    }
+                    {["Template", "Details", "Menu", "Deploy"][stepNumber - 1]}
                   </span>
                 </div>
                 {stepNumber < 4 && (
                   <div
-                    className={`flex-1 h-1 mx-4 rounded transition ${
-                      step > stepNumber ? "bg-orange-600" : "bg-gray-200"
+                    className={`flex-1 h-1 mx-6 rounded transition-all ${
+                      step > stepNumber
+                        ? "bg-gradient-to-r from-orange-500 to-pink-600"
+                        : "bg-gray-200"
                     }`}
                   />
                 )}
@@ -768,44 +798,52 @@ const ImprovedOnboarding = ({ user, onUpdateUser }) => {
   // Navigation Buttons
   const NavigationButtons = useMemo(
     () => (
-      <div className="bg-white border-t border-gray-200 py-4 px-8">
-        <div className="max-w-4xl mx-auto flex justify-between">
+      <div className="bg-white border-t-2 border-gray-200 py-6 px-8 shadow-lg">
+        <div className="max-w-5xl mx-auto flex justify-between">
           <button
             onClick={() => setStep(step - 1)}
-            disabled={step === 1}
-            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={step === 1 || deployed || deploying}
+            className="px-10 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-300 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             ← Back
           </button>
-          <button
-            onClick={handleNextStep}
-            disabled={step === totalSteps || savingRestaurant}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {savingRestaurant
-              ? "Saving..."
-              : step === totalSteps
-              ? "Finish"
-              : "Continue →"}
-          </button>
+          {!deployed && !deploying && step < 4 && (
+            <button
+              onClick={handleNextStep}
+              disabled={savingRestaurant}
+              className="px-10 py-4 bg-gradient-to-r from-orange-500 to-pink-600 text-white rounded-xl font-bold text-lg hover:from-orange-600 hover:to-pink-700 transition disabled:opacity-50 shadow-lg"
+            >
+              {savingRestaurant ? "Saving..." : "Continue →"}
+            </button>
+          )}
         </div>
       </div>
     ),
-    [step, totalSteps, handleNextStep, savingRestaurant]
+    [step, deployed, deploying, savingRestaurant, handleNextStep]
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
+        }
+      `}</style>
+
       {ProgressBar}
 
-      <div className="flex-1 overflow-y-auto p-8">
-        {step === 1 && RestaurantInfoStep}
-        {step === 2 && MenuUploadStep}
-        {step === 3 && CustomizationStep}
-        {step === 4 && DeploymentStep}
+      <div className="flex-1 overflow-y-auto p-10">
+        {step === 1 && TemplateSelectionStep}
+        {step === 2 && RestaurantInfoStep}
+        {step === 3 && MenuItemsStep}
+        {step === 4 && DeployStep}
       </div>
 
-      {step !== 3 && NavigationButtons}
+      {step < 4 && NavigationButtons}
     </div>
   );
 };
